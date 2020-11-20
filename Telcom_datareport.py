@@ -211,13 +211,53 @@ print('2nd Hour Summary:\n',Hour_2['VALUE'].describe())
 # The result of the summations is as expected from the EVALUATION section of the CRISP-DM Repot.
 
 # 2 Location Dataset
+# a) Analysing In Service Stations
+# First we get rid of the out of service station as the goal is to upgrade existing
+# infrastructure, not to repair out of service ones.
 
+# Location_Geo = Geo_Location[Geo_Location['STATUS'] == 'In Service']
+# Location_Geo = Geo_Location.groupby(['VILLES'])
 
+# This shows the top VILLES with most in service stations and therefore could be the priority list
+Geo_Location['VILLES'].value_counts().head(50)
 
-
-
+# b) Merging Location Dataset to Telecom Datasets
 # First is determining whether SITE CODE on Location Dataset is similar to SITE ID on Telcom Datasets
 Test = Geo_Location['SITE_CODE']
 Telcom.loc[Telcom['SITE_ID'].isin(Test)]
 Geo_Location[Geo_Location['SITE_CODE'] == '1b5540c02d']
 # It proves to be true.
+
+# Rename SITE_CODE to SITE_ID to match the Telcom Data SET
+
+Geo_Location.columns = ['VILLES', 'STATUS', 'LOCALISATION', 'DECOUPZONE', 'ZONENAME',
+                        'LONGITUDE', 'LATITUDE', 'REGION','AREA', 'CELL_ID', 'SITE_ID']
+Geo_Location
+
+# Merge both Hours Data into one
+print(Hour_1)
+print(Hour_2)
+Telcom_hours = pd.concat((Hour_1, Hour_2), axis=0, ignore_index=True)
+Telcom_hours
+
+# Merging the 2 datasets Telecom and Location
+Telecommunications = Telcom_hours.merge(Geo_Location, how= 'inner', on='SITE_ID')
+# Drop unnecessary columns
+Telecommunications = Telecommunications.drop(['CELL_ID_x', 'LONGITUDE', 'LATITUDE', 'CELL_ID_y'], axis= 1)
+Telecommunications
+
+# Summary of the Dataset
+Telecommunications['VALUE'].describe()
+
+# Determining the priority list from the 75th percentile.
+Priority = Telecommunications[Telecommunications['VALUE'] > 50]
+Priority = Priority.sort_values(by= 'VALUE', ascending=0)
+Priority
+
+Optimum_Priority = Priority.groupby('VILLES')['VALUE'].sum().sort_values(ascending=False)
+Optimum_Priority.head(50)
+
+"""RECOMMENDATION
+
+The Priority list of the 100 top VILLES to be upgraded first was achieved. These Areas should have their infrastructure upgraded first as they are the areas with the most customer engagement, hence value for money as Return On Investment will be quicker.Voice and SMS infrastructure can be upgraded at the same time. They can be upgraded first as was determined by their extensive usage in the second time frame (after 00:00 hrs). The Data infrastructure can be upgraded later since it is used primarily in the first time frame (23:00 hrs - 00:00 hrs). If all products infrastructure need to be upgraded at the same time, the best time to upgrade would be along the first time frame i.e. before 00:00 hrs, since this will only affect the Data Product users, who are a much smaller contributor to the Network in general, as per the data given.
+"""
