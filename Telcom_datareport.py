@@ -17,6 +17,7 @@ Currently MTN Cote d'Ivoire would like to upgrade its technology infrastructure 
 
 import pandas as pd
 import numpy as np
+from functools import reduce
 
 # Setting ipython's maximum row and column displays
 pd.set_option('display.max_columns', 50)
@@ -31,13 +32,13 @@ Location_read = pd.read_csv('cells_geo.csv')
 # a) Telcom_read Dataset
 Telcom_read.head()
 
-# Observation: we'll need to clean the column headings by changing 'PRODUTC' to 'PRODUCT' 
+# Observation: we'll need to clean the column headings by changing 'PRODUTC' to 'PRODUCT'
 # & 'DATETIME' to 'DATE_TIME'
 
 # b) Telcom2_read Dataset
 Telcom2_read.head()
 
-# Observation: we'll need to clean the column headings by changing 'DW_A_NUMBER' 
+# Observation: we'll need to clean the column headings by changing 'DW_A_NUMBER'
 # & 'DW_B_NUMBER' to 'DW_A_NUMBER_INT' & 'DW_B_NUMBER_INT' Respectively
 
 # c) Telcom3_read Dataset
@@ -54,21 +55,21 @@ Location_read.head()
 """**DATA CLEANING**"""
 
 # 1. Matching Telcom Datasets Column names as expected from the keys description table
-# a) Telcom_read clean the column headings by changing 'PRODUTC' to 'PRODUCT' 
+# a) Telcom_read clean the column headings by changing 'PRODUTC' to 'PRODUCT'
 # & 'DATETIME' to 'DATE_TIME'
-Telcom_read.columns = ['PRODUCT', 'VALUE', 'DATE_TIME', 'CELL_ON_SITE', 'DW_A_NUMBER_INT', 
+Telcom_read.columns = ['PRODUCT', 'VALUE', 'DATE_TIME', 'CELL_ON_SITE', 'DW_A_NUMBER_INT',
                        'DW_B_NUMBER_INT', 'COUNTRY_A', 'COUNTRY_B', 'CELL_ID', 'SITE_ID']
 Telcom_read.head()  # Previewing the table after the changes.
 
-# b) Telcom2_read clean the column headings by changing 'DW_A_NUMBER' 
+# b) Telcom2_read clean the column headings by changing 'DW_A_NUMBER'
 #    & 'DW_B_NUMBER' to 'DW_A_NUMBER_INT' & 'DW_B_NUMBER_INT' Respectively
-Telcom2_read.columns = ['PRODUCT', 'VALUE', 'DATE_TIME', 'CELL_ON_SITE', 'DW_A_NUMBER_INT', 
+Telcom2_read.columns = ['PRODUCT', 'VALUE', 'DATE_TIME', 'CELL_ON_SITE', 'DW_A_NUMBER_INT',
                        'DW_B_NUMBER_INT', 'COUNTRY_A', 'COUNTRY_B', 'CELL_ID', 'SITE_ID']
 Telcom2_read.head()
 
 # c) Telcom3_read clean the column headings by changing 'CELLID' to 'CELL_ID'
 #    and 'SIET_ID' to 'SITE_ID'
-Telcom3_read.columns = ['PRODUCT', 'VALUE', 'DATE_TIME', 'CELL_ON_SITE', 'DW_A_NUMBER_INT', 
+Telcom3_read.columns = ['PRODUCT', 'VALUE', 'DATE_TIME', 'CELL_ON_SITE', 'DW_A_NUMBER_INT',
                        'DW_B_NUMBER_INT', 'COUNTRY_A', 'COUNTRY_B', 'CELL_ID', 'SITE_ID']
 Telcom3_read.head()
 
@@ -88,7 +89,7 @@ Location.columns = ['INDEX','VILLES', 'STATUS', 'LOCALISATION', 'DECOUPZONE', 'Z
                     'LONGITUDE', 'LATITUDE', 'REGION','AREA', 'CELL_ID', 'SITE_CODE']
 Location.head()
 
-# 3) Dropping unrequired columns of data i.e. CELL_ON_SITE,DW_A_NUMBER_INT,DW_B_NUMBER_INT,	
+# 3) Dropping unrequired columns of data i.e. CELL_ON_SITE,DW_A_NUMBER_INT,DW_B_NUMBER_INT,
 #    COUNTRY_A & COUNTRY_B from the Telcom Datasets
 #    and dropping INDEX column on Location dataset
 
@@ -128,7 +129,7 @@ Telcom3 = Telcom_3[Telcom_3['SITE_ID'].notnull()]
 # Preview of Telcom3
 Telcom3
 
-# From the above, we got more insight, we can make our data better by getting rid of 
+# From the above, we got more insight, we can make our data better by getting rid of
 # all data with VALUE 0, as this represents 0 customer engagement.
 Telcom1 = Telcom1[Telcom1['VALUE'] != 0]
 Telcom2 = Telcom2[Telcom2['VALUE'] != 0]
@@ -149,11 +150,74 @@ Geo_Location.loc[Geo_Location['ZONENAME'] == '"ASSINIE"""', 'ZONENAME'] = 'ASSIN
 Geo_Location.loc[Geo_Location['ZONENAME'] == '"KRIKOREA"""', 'ZONENAME'] = 'KRIKOREA'
 Geo_Location
 
-# MERGE THE TELCOM DATASHEETS HERE!!!
-Geo_Location[Geo_Location['CELL_ID'] == '1502501d78']
-
 """The Data Looks ready for Analysis from this point forward. The Data Preparation concluded with Data Cleaning to have appropriate Data for the analysis section
 
 **DATA ANALYSIS**
 """
 
+# 1. TELCOM DATASETS
+# a) Analysing Product Use per Day
+# Let's see the VALUE totals of each day first, before any other operation
+print(Telcom1['VALUE'].sum())
+print(Telcom2['VALUE'].sum())
+print(Telcom3['VALUE'].sum())
+
+# First we get the product use totals of each day.
+Products_in_Telcom1 = Telcom1.groupby('PRODUCT')['VALUE'].sum()
+for key, value in Products_in_Telcom1.iteritems():
+  PRODUCT_NAME = key
+  print(key, value)
+
+Products_in_Telcom2 = Telcom2.groupby('PRODUCT')['VALUE'].sum()
+for key, value in Products_in_Telcom2.iteritems():
+  PRODUCT_NAME = key
+  print(key, value)
+
+Products_in_Telcom3 = Telcom3.groupby('PRODUCT')['VALUE'].sum()
+for key, value in Products_in_Telcom3.iteritems():
+  PRODUCT_NAME = key
+  print(key, value)
+
+# b) Analysing Date_Time Product Usage
+
+Day_1_1st_hour = Telcom1[Telcom1['DATE_TIME'].map(lambda Time: '2012-05-06 23' in Time)] # get the 1st hour of first DataSheet
+Day_1_2nd_hour = Telcom1[Telcom1['DATE_TIME'].map(lambda Time: '2012-05-07' in Time)] # get the remaining hour
+print(Day_1_1st_hour.groupby('PRODUCT')['VALUE'].sum())
+Day_1_2nd_hour.groupby('PRODUCT')['VALUE'].sum()
+
+print(Telcom2)
+Day_2_1st_hour = Telcom2[Telcom2['DATE_TIME'].map(lambda Time: '2012-05-07 23' in Time)] # get the 1st hour of second DataSheet
+Day_2_2nd_hour = Telcom2[Telcom2['DATE_TIME'].map(lambda Time: '2012-05-08' in Time)] # get the remaining hour
+print(Day_2_1st_hour.groupby('PRODUCT')['VALUE'].sum())
+Day_2_2nd_hour.groupby('PRODUCT')['VALUE'].sum()
+
+print(Telcom3)
+Day_3_1st_hour = Telcom3[Telcom3['DATE_TIME'].map(lambda Time: '2012-05-08 23' in Time)] # get the 1st hour of third DataSheet
+Day_3_2nd_hour = Telcom3[Telcom3['DATE_TIME'].map(lambda Time: '2012-05-09' in Time)] # get the remaining hour
+print(Day_3_1st_hour.groupby('PRODUCT')['VALUE'].sum())
+Day_3_2nd_hour.groupby('PRODUCT')['VALUE'].sum()
+
+# c) Merging the 3 days along the 2 different timeframes
+
+Hour_1 = pd.concat((Day_1_1st_hour, Day_2_1st_hour, Day_3_1st_hour), axis=0, ignore_index=True)
+print('1st Hour sum: ', Hour_1['VALUE'].sum())
+
+Hour_2 = pd.concat((Day_1_2nd_hour, Day_2_2nd_hour, Day_3_2nd_hour), axis=0, ignore_index=True)
+print('2nd Hour sum: ', Hour_2['VALUE'].sum())
+
+print('1st Hour Summary:\n',Hour_1['VALUE'].describe())
+print('2nd Hour Summary:\n',Hour_2['VALUE'].describe())
+
+# The result of the summations is as expected from the EVALUATION section of the CRISP-DM Repot.
+
+# 2 Location Dataset
+
+
+
+
+
+# First is determining whether SITE CODE on Location Dataset is similar to SITE ID on Telcom Datasets
+Test = Geo_Location['SITE_CODE']
+Telcom.loc[Telcom['SITE_ID'].isin(Test)]
+Geo_Location[Geo_Location['SITE_CODE'] == '1b5540c02d']
+# It proves to be true.
